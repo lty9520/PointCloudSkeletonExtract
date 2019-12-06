@@ -374,6 +374,14 @@ int main()
 		//z轴点云切片(3d->2d)
 		cloud_cuted_3d = cutPointCloud(n, max_z, min_z, y, x, z, cloud_cuted_3d, size, cut_n_3d, filename_3d, 2, res_cloud);
 
+		//创建存储点云重心的对象
+		Eigen::Vector4f centroid;
+		//计算重心点
+		pcl::compute3DCentroid(*cloud_cuted_3d, centroid);
+		//添加重心到骨架中
+		cloud_skeleton->push_back(PointXYZ(centroid[0], centroid[1], centroid[2]));
+
+
 		int size_2d = cloud_cuted_3d->size();
 		double* x_2d = new double[size_2d];
 		double* y_2d = new double[size_2d];
@@ -392,6 +400,7 @@ int main()
 		//求x的最小值
 		double min_x = min_array(x_2d, size_2d);
 		double res_cloud_2d = 0.0;
+		/*
 		for (cut_n_2d = 0; cut_n_2d < n - 1; cut_n_2d++)
 		{
 
@@ -415,7 +424,7 @@ int main()
 			//添加重心到骨架中
 			cloud_skeleton->push_back(PointXYZ(centroid[0], centroid[1], centroid[2]));
 		}
-		
+		*/
 	}
 
 	pcl::io::savePCDFileASCII("cloud_skeleton.pcd", *cloud_skeleton);
