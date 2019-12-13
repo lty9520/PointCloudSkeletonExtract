@@ -253,15 +253,15 @@ vector <pcl::PointIndices> regionGrow(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud
 	pass.filter(*indices);
 	*/
 	pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
-	reg.setMinClusterSize(10);
+	reg.setMinClusterSize(500);
 	reg.setMaxClusterSize(1000000);
 	reg.setSearchMethod(tree);
 	reg.setNumberOfNeighbours(20);
 	reg.setInputCloud(cloud_in);
 	//reg.setIndices (indices);
 	reg.setInputNormals(normals);
-	reg.setSmoothnessThreshold(3.0 / 180.0 * M_PI);
-	reg.setCurvatureThreshold(0.5);
+	reg.setSmoothnessThreshold(60.0 / 180.0 * M_PI);
+	reg.setCurvatureThreshold(5);
 
 	vector <pcl::PointIndices> clusters;
 	reg.extract(clusters);
@@ -863,7 +863,7 @@ int main()
 	////创建mesh对象
 	//pcl::PolygonMesh mesh;
 	////读取polygon文件，obj格式读取为mesh
-	//pcl::io::loadPolygonFile("xiao-xie.obj", mesh);
+	//pcl::io::loadPolygonFile("zhengti-moxing-xie.obj", mesh);
 	////pcl::io::loadPolygonFilePLY("zhengti-moxing.ply", mesh);
 	//
 	////初始化结果存储点云final
@@ -871,7 +871,7 @@ int main()
 	////将mesh格式转换为PointCloud格式 方便读取
 	//pcl::fromPCLPointCloud2(mesh.cloud, *cloud);
 	////转存为可读取的PCD文件格式
-	//pcl::io::savePCDFileASCII("xiao-xie.pcd", *cloud);
+	//pcl::io::savePCDFileASCII("zhengti-moxing-xie.pcd", *cloud);
 	//
 	////可输出点的数量
 	//std::cout << cloud->size() << endl;
@@ -880,7 +880,7 @@ int main()
 
 
 	//加载点云文件
-	pcl::io::loadPCDFile("zhengti-dianyun.pcd", *cloud);
+	pcl::io::loadPCDFile("zhengti-moxing-xie.pcd", *cloud);
 
 	//std::cout << "PointCloud before filtering has: " << cloud->points.size() << " data points." << std::endl;
 	std::cerr << "Point cloud data: " << cloud->points.size() << " points" << std::endl;
@@ -899,7 +899,7 @@ int main()
 	//pcl::PointCloud<pcl::Normal>::Ptr cloud_normal(new pcl::PointCloud<pcl::Normal>);
 
 	//片数
-	int n = 50;
+	int n = 80;
 
 	//点云密度
 	double res_cloud = 0.0;
@@ -1081,7 +1081,7 @@ int main()
 	viewer_all->addPointCloud(cloud_skeleton, green, "skeleton");
 	viewer_all->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "skeleton");
 	viewer_all->setPointCloudSelected(true);
-	viewer_all->addCoordinateSystem(1);
+	viewer_all->addCoordinateSystem(0.5);
 
 	while (!viewer_ori->wasStopped())
 	{
