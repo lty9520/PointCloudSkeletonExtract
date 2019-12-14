@@ -9,6 +9,7 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/io/vtk_lib_io.h>//loadPolygonFileOBJ所属头文件；
 #include <pcl/common/time.h>
+#include <pcl/surface/mls.h>
 
 #include <pcl/search/search.h>
 #include <pcl/search/kdtree.h>
@@ -41,15 +42,40 @@ int main()
 	////转存为可读取的PCD文件格式
 	//pcl::io::savePCDFileASCII("chaijie-65-rotatest.pcd", *cloud_align);
 
-	pcl::io::loadPCDFile("z-33.pcd", *cloud);
+	pcl::io::loadPCDFile("y-19.pcd", *cloud);
 	
 	pcl::search::Search<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
 	pcl::PointCloud <pcl::Normal>::Ptr normals(new pcl::PointCloud <pcl::Normal>);
+	pcl::PointCloud<pcl::PointNormal>::Ptr mls_points(new pcl::PointCloud<pcl::PointNormal>);
 	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
 	normal_estimator.setInputCloud(cloud);
 	normal_estimator.setSearchMethod(tree);
-	normal_estimator.setKSearch(100);
-	normal_estimator.compute(*normals);
+	normal_estimator.setKSearch(200);
+	//normal_estimator.compute(*normals);
+
+	//创建mls对象
+	pcl::MovingLeastSquares<pcl::PointXYZ, pcl::PointNormal> mls;
+
+	//   pcl::MovingLeastSquares<point,point> mls;
+
+	mls.setComputeNormals(true);
+	mls.setInputCloud(cloud);
+	mls.setPolynomialFit(true); //设置为true则在平滑过程中采用多项式拟合来提高精度
+	mls.setPolynomialOrder(4); //MLS拟合的阶数，默认是2
+	mls.setSearchMethod(tree);
+	mls.setSearchRadius(5);  //搜索半径
+
+	mls.process(*mls_points);
+
+	normals->resize(mls_points->size());
+	for (int i = 0; i < mls_points->size(); i++)
+	{
+		normals->points[i].normal_x = mls_points->points[i].normal_x;
+		normals->points[i].normal_y = mls_points->points[i].normal_y;
+		normals->points[i].normal_z = mls_points->points[i].normal_z;
+		normals->points[i].curvature = mls_points->points[i].curvature;
+	}
+
 	/*坐标过滤器
 	pcl::IndicesPtr indices(new std::vector <int>);
 	pcl::PassThrough<pcl::PointXYZ> pass;
@@ -59,15 +85,15 @@ int main()
 	pass.filter(*indices);
 */
 	pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
-	reg.setMinClusterSize(100);
+	reg.setMinClusterSize(300);
 	reg.setMaxClusterSize(1000000);
 	reg.setSearchMethod(tree);
-	reg.setNumberOfNeighbours(10);
+	reg.setNumberOfNeighbours(200);
 	reg.setInputCloud(cloud);
 	//reg.setIndices (indices);
 	reg.setInputNormals(normals);
-	reg.setSmoothnessThreshold(3.0 / 180.0 * M_PI);
-	reg.setCurvatureThreshold(0.5);
+	reg.setSmoothnessThreshold(60.0 / 180.0 * M_PI);
+	reg.setCurvatureThreshold(2);
 
 	std::vector <pcl::PointIndices> clusters;
 	reg.extract(clusters);
