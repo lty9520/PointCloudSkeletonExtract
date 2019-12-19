@@ -1,4 +1,4 @@
-#include <windows.h>
+ï»¿#include <windows.h>
 #include <windef.h>
 #include <wincrypt.h>
 #include <iostream>
@@ -9,16 +9,16 @@
 #include <iosfwd>
 
 #include <pcl/io/io.h>
-#include <pcl/io/pcd_io.h>		//PCLµÄPCD¸ñÊ½ÎÄ¼şµÄÊäÈëÊä³öÍ·ÎÄ¼ş
+#include <pcl/io/pcd_io.h>		//PCLçš„PCDæ ¼å¼æ–‡ä»¶çš„è¾“å…¥è¾“å‡ºå¤´æ–‡ä»¶
 #include <pcl/io/obj_io.h>
 #include <pcl/PolygonMesh.h>
 #include <pcl/point_cloud.h>
-#include <pcl/io/vtk_lib_io.h>//loadPolygonFileOBJËùÊôÍ·ÎÄ¼ş£»
+#include <pcl/io/vtk_lib_io.h>//loadPolygonFileOBJæ‰€å±å¤´æ–‡ä»¶ï¼›
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/visualization/cloud_viewer.h>
-#include <pcl/sample_consensus/method_types.h>   //Ëæ»ú²ÎÊı¹À¼Æ·½·¨Í·ÎÄ¼ş
-#include <pcl/sample_consensus/model_types.h>   //Ä£ĞÍ¶¨ÒåÍ·ÎÄ¼ş
-#include <pcl/segmentation/sac_segmentation.h>   //»ùÓÚ²ÉÑùÒ»ÖÂĞÔ·Ö¸îµÄÀàµÄÍ·ÎÄ¼ş
+#include <pcl/sample_consensus/method_types.h>   //éšæœºå‚æ•°ä¼°è®¡æ–¹æ³•å¤´æ–‡ä»¶
+#include <pcl/sample_consensus/model_types.h>   //æ¨¡å‹å®šä¹‰å¤´æ–‡ä»¶
+#include <pcl/segmentation/sac_segmentation.h>   //åŸºäºé‡‡æ ·ä¸€è‡´æ€§åˆ†å‰²çš„ç±»çš„å¤´æ–‡ä»¶
 #include <pcl/common/impl/io.hpp>
 #include <pcl/point_types.h>
 #include <pcl/ModelCoefficients.h>
@@ -28,8 +28,9 @@
 #include <boost/thread/thread.hpp>
 #include <pcl/features/normal_3d_omp.h>
 #include <pcl/features/normal_3d.h>
-#include <pcl/features/boundary.h>			//±ß½çÌáÈ¡Í·ÎÄ¼ş
+#include <pcl/features/boundary.h>			//è¾¹ç•Œæå–å¤´æ–‡ä»¶
 #include <pcl/segmentation/region_growing.h>
+#include <pcl/surface/mls.h>
 
 
 
@@ -38,38 +39,48 @@ using namespace std;
 
 
 
-//ÇóÊı×é×î´óÖµ
+//æ±‚æ•°ç»„æœ€å¤§å€¼
 double
-max_array(double *array, int n)//array ÎªintÀàĞÍµÄÊı×éµÄÖ¸Õë £¬nÎªÊı×éÔªËØ¸öÊı
+max_array(double *array, int n)//array ä¸ºintç±»å‹çš„æ•°ç»„çš„æŒ‡é’ˆ ï¼Œnä¸ºæ•°ç»„å…ƒç´ ä¸ªæ•°
 {
 	double max = array[0];
-	for (int i = 0; i < n; i++)
+
+
+	for (int i = 0; i < n; ++i)
 	{
 		if (max < array[i])
 		{
 			max = array[i];
 		}
 	}
+	
 	return max;
+	
 }
 
-//ÇóÊı×é×îĞ¡Öµ
+//æ±‚æ•°ç»„æœ€å°å€¼
 double
-min_array(double *array, int n)//array ÎªintÀàĞÍµÄÊı×éµÄÖ¸Õë £¬nÎªÊı×éÔªËØ¸öÊı
+min_array(double *array, int n)//array ä¸ºintç±»å‹çš„æ•°ç»„çš„æŒ‡é’ˆ ï¼Œnä¸ºæ•°ç»„å…ƒç´ ä¸ªæ•°
 {
 	double min = array[0];
-	for (int i = 0; i < n; i++)
+
+
+
+	for (int i = 0; i < n; ++i)
 	{
 		if (min > array[i])
 		{
 			min = array[i];
 		}
 	}
+		
+
+	
 	return min;
 }
 
 
-//¼ÆËãµãÔÆÃÜ¶È£¨µãÔÆ¼äÆ½¾ù¼ä¾à£©
+//è®¡ç®—ç‚¹äº‘å¯†åº¦ï¼ˆç‚¹äº‘é—´å¹³å‡é—´è·ï¼‰
 double
 computeCloudResolution(const pcl::PointCloud<PointXYZ>::ConstPtr &cloud)
 {
@@ -80,6 +91,7 @@ computeCloudResolution(const pcl::PointCloud<PointXYZ>::ConstPtr &cloud)
 	std::vector<float> sqr_distances(2);
 	pcl::search::KdTree<PointXYZ> tree;
 	tree.setInputCloud(cloud);
+
 
 	for (size_t i = 0; i < cloud->size(); ++i)
 	{
@@ -95,6 +107,7 @@ computeCloudResolution(const pcl::PointCloud<PointXYZ>::ConstPtr &cloud)
 			++n_points;
 		}
 	}
+	
 	if (n_points != 0)
 	{
 		res /= n_points;
@@ -107,16 +120,16 @@ computeCloudResolution(const pcl::PointCloud<PointXYZ>::ConstPtr &cloud)
 
 
 /**
-**n->Æ¬Êı
-**max_x ->ÇĞÈ¡·½Ïò×î´óÖµ
-**min_x ->ÇĞÈ¡·½Ïò×îĞ¡Öµ
-**y->µãÔÆ¶ÔÓ¦×ø±ê¼¯ºÏ
-**z->µãÔÆ¶ÔÓ¦×ø±ê¼¯ºÏ
-**x->µãÔÆ¶ÔÓ¦×ø±ê¼¯ºÏ
-**cloud_in->ÊäÈëµãÔÆ
-**size->µãÔÆ´óĞ¡
-**res_cloud->µãÔÆÃÜ¶È
-**cut_n->µ±Ç°²Ù×÷Æ¬
+**n->ç‰‡æ•°
+**max_x ->åˆ‡å–æ–¹å‘æœ€å¤§å€¼
+**min_x ->åˆ‡å–æ–¹å‘æœ€å°å€¼
+**y->ç‚¹äº‘å¯¹åº”åæ ‡é›†åˆ
+**z->ç‚¹äº‘å¯¹åº”åæ ‡é›†åˆ
+**x->ç‚¹äº‘å¯¹åº”åæ ‡é›†åˆ
+**cloud_in->è¾“å…¥ç‚¹äº‘
+**size->ç‚¹äº‘å¤§å°
+**res_cloud->ç‚¹äº‘å¯†åº¦
+**cut_n->å½“å‰æ“ä½œç‰‡
 
 **/
 pcl::PointCloud<pcl::PointXYZ>::Ptr cutPointCloud(int n, double max_x, double min_x, double* y, double* z, double* x,
@@ -135,32 +148,37 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cutPointCloud(int n, double max_x, double mi
 	double * z_cuted = new double[size];
 
 	x_pitch[0] = min_x;
-	//¼ÆËãÇĞÆ¬Çø¼ä
-	for (int b = 1; b < n + 2; b++) {
+	//è®¡ç®—åˆ‡ç‰‡åŒºé—´
+
+	for (int b = 1; b < n + 2; ++b) {
 		x_pitch[b] = x_pitch[b - 1] + pitch;
 		_my_log << "x_pitch[" << b << "] = " << x_pitch[b - 1] << endl;
 	}
-	//´æ´¢ÇĞÆ¬Çø¼äÖĞµã
+	
+	//å­˜å‚¨åˆ‡ç‰‡åŒºé—´ä¸­ç‚¹
 	double * x_cuted = new double[n];
-	for (int i = 0; i < n + 1; i++) {
+
+	for (int i = 0; i < n + 1; ++i) {
 		x_cuted[i] = x_pitch[i] + 0.5 * pitch;
 	}
-	//ÇĞÆ¬
-	for (int k = cut_n; k < cut_n + 1; k++) {
+	
+	//åˆ‡ç‰‡
+	for (int k = cut_n; k < cut_n + 1; ++k) {
 		_my_log << "k =" << k << endl;
-		//ÇĞÆ¬ÄÚµãÔÆÊıÁ¿
+		//åˆ‡ç‰‡å†…ç‚¹äº‘æ•°é‡
 		int u = 0;
 
-		for (int v = 0; v < size; v++) {
+		for (int v = 0; v < size; ++v) {
 
 			if (x[v] >= x_pitch[k] && x[v] <= x_pitch[k + 1]) {
 				y_cuted[u] = y[v];
 				z_cuted[u] = z[v];
-				u++;
+				++u;
 			}
 			continue;
 
 		}
+
 		_my_log << "number:" << u << endl;
 
 		cloud_in->width = u;
@@ -170,51 +188,61 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cutPointCloud(int n, double max_x, double mi
 
 		switch (mode_flag)
 		{
-		//xÖáÇĞ(x = x = x,y = y = y, z = z = z)
+			//xè½´åˆ‡(x = x = x,y = y = y, z = z = z)
 		case 0:
-		//»ñÈ¡ÇĞÆ¬µãÔÆ
-			for (int i = 0; i < u; i++) {
+			//è·å–åˆ‡ç‰‡ç‚¹äº‘
+
+			for (int i = 0; i < u; ++i) {
 				cloud_in->points[i].x = x_cuted[k];
 				cloud_in->points[i].z = y_cuted[i];
 				cloud_in->points[i].y = z_cuted[i];
 			}
 			break;
-			
-		//yÖáÇĞ(y = x = y,z = y = z, x = z = x)
+		
+
+		//yè½´åˆ‡(y = x = y,z = y = z, x = z = x)
 		case 1:
-			//»ñÈ¡ÇĞÆ¬µãÔÆ
-			for (int i = 0; i < u; i++) {
+			//è·å–åˆ‡ç‰‡ç‚¹äº‘
+
+
+			for (int i = 0; i < u; ++i) {
 				cloud_in->points[i].y = x_cuted[k];
 				cloud_in->points[i].x = y_cuted[i];
 				cloud_in->points[i].z = z_cuted[i];
 			}
+		
 			break;
-		//zÖáÇĞ(z = x = z,y = y = y, x = z = x)
+
+		//zè½´åˆ‡(z = x = z,y = y = y, x = z = x)
 		case 2:
-			//»ñÈ¡ÇĞÆ¬µãÔÆ
-			for (int i = 0; i < u; i++) {
+			//è·å–åˆ‡ç‰‡ç‚¹äº‘
+
+
+			for (int i = 0; i < u; ++i) {
 				cloud_in->points[i].z = x_cuted[k];
 				cloud_in->points[i].y = y_cuted[i];
 				cloud_in->points[i].x = z_cuted[i];
 			}
+		
 			break;
-			
+
+
 		default:
 			break;
 		}
-		
+
 
 		cloud_in->width = u;
 		cloud_in->points.resize(cloud_in->width * cloud_in->height);
 
 		std::cout << "point cloud_cuted has:" << cloud_in->points.size() << "data points" << endl;
-		//¼ÆËãÇĞÆ¬ºóµãÔÆÃÜ¶È
+		//è®¡ç®—åˆ‡ç‰‡åç‚¹äº‘å¯†åº¦
 		res_cloud = computeCloudResolution(cloud_in);
 		_my_log << "cloud resolution = " << res_cloud << endl;
 
-		
-		
-		
+
+
+
 		if (cloud_in->size() == 0)
 		{
 			_my_log << "this picth has no data!" << endl;
@@ -223,9 +251,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cutPointCloud(int n, double max_x, double mi
 		{
 			pcl::io::savePCDFileASCII(filename, *cloud_in);
 		}
-		
+
 		//boundaryEstimation(boundaries, cloud_in, res_cloud, cloud_boundaries);
 	}
+	
 
 	
 	return cloud_in;
@@ -239,12 +268,38 @@ vector <pcl::PointIndices> regionGrow(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud
 
 	pcl::search::Search<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
 	pcl::PointCloud <pcl::Normal>::Ptr normals(new pcl::PointCloud <pcl::Normal>);
-	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
-	normal_estimator.setInputCloud(cloud_in);
-	normal_estimator.setSearchMethod(tree);
-	normal_estimator.setKSearch(100);
-	normal_estimator.compute(*normals);
-	/*×ø±ê¹ıÂËÆ÷
+	pcl::PointCloud<pcl::PointNormal>::Ptr mls_points(new pcl::PointCloud<pcl::PointNormal>);
+	//pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
+	//normal_estimator.setInputCloud(cloud_in);
+	//normal_estimator.setSearchMethod(tree);
+	//normal_estimator.setKSearch(200);
+	//normal_estimator.compute(*normals);
+
+	//åˆ›å»ºmlså¯¹è±¡
+	pcl::MovingLeastSquares<pcl::PointXYZ, pcl::PointNormal> mls;
+
+	//   pcl::MovingLeastSquares<point,point> mls;
+
+	mls.setComputeNormals(true);
+	mls.setInputCloud(cloud_in);
+	mls.setPolynomialFit(true); //è®¾ç½®ä¸ºtrueåˆ™åœ¨å¹³æ»‘è¿‡ç¨‹ä¸­é‡‡ç”¨å¤šé¡¹å¼æ‹Ÿåˆæ¥æé«˜ç²¾åº¦
+	mls.setPolynomialOrder(2); //MLSæ‹Ÿåˆçš„é˜¶æ•°ï¼Œé»˜è®¤æ˜¯2
+	mls.setSearchMethod(tree);
+	mls.setSearchRadius(0.5); //æœç´¢åŠå¾„
+
+	mls.process(*mls_points);
+
+	normals->resize(mls_points->size());
+
+	for (int i = 0; i < mls_points->size(); ++i)
+	{
+		normals->points[i].normal_x = mls_points->points[i].normal_x;
+		normals->points[i].normal_y = mls_points->points[i].normal_y;
+		normals->points[i].normal_z = mls_points->points[i].normal_z;
+		normals->points[i].curvature = mls_points->points[i].curvature;
+	}
+	
+	/*åæ ‡è¿‡æ»¤å™¨
 	pcl::IndicesPtr indices(new std::vector <int>);
 	pcl::PassThrough<pcl::PointXYZ> pass;
 	pass.setInputCloud(cloud);
@@ -253,15 +308,15 @@ vector <pcl::PointIndices> regionGrow(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud
 	pass.filter(*indices);
 	*/
 	pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
-	reg.setMinClusterSize(500);
+	reg.setMinClusterSize(250);
 	reg.setMaxClusterSize(1000000);
 	reg.setSearchMethod(tree);
 	reg.setNumberOfNeighbours(20);
 	reg.setInputCloud(cloud_in);
 	//reg.setIndices (indices);
 	reg.setInputNormals(normals);
-	reg.setSmoothnessThreshold(60.0 / 180.0 * M_PI);
-	reg.setCurvatureThreshold(5);
+	reg.setSmoothnessThreshold(90.0 / 180.0 * M_PI);
+	reg.setCurvatureThreshold(0.5);
 
 	vector <pcl::PointIndices> clusters;
 	reg.extract(clusters);
@@ -272,7 +327,7 @@ vector <pcl::PointIndices> regionGrow(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud
 
 }
 
-//µÃµ½ÎÄ¼şÂ·¾¶µÄÄ¿Â¼(must with '/')
+//å¾—åˆ°æ–‡ä»¶è·¯å¾„çš„ç›®å½•(must with '/')
 string GetPathDir(string filePath)
 {
 	string dirPath = filePath;
@@ -284,7 +339,7 @@ string GetPathDir(string filePath)
 	return dirPath;
 }
 
-//´´½¨¶à¼¶Ä¿Â¼
+//åˆ›å»ºå¤šçº§ç›®å½•
 void CreateMultiLevel(string dir)
 {
 	if (_access(dir.c_str(), 00) == 0)
@@ -309,10 +364,14 @@ void CreateMultiLevel(string dir)
 		curDir = GetPathDir(dir);
 	}
 
+
+
 	for (auto it : dirList)
 	{
 		_mkdir(it.c_str());
 	}
+	
+	
 }
 
 
@@ -334,12 +393,12 @@ void CreateMultiLevel(string dir)
 // Method:    CalcRatio
 // FullName:  CalcRatio
 // Access:    public 
-// Returns:   double			µÚÒ»·½ÏòÓëµÚ¶ş·½Ïò¾àÀë±ÈÂÊ
+// Returns:   double			ç¬¬ä¸€æ–¹å‘ä¸ç¬¬äºŒæ–¹å‘è·ç¦»æ¯”ç‡
 // Qualifier:
-// Parameter: double max_first	µÚÒ»·½ÏòµÄ×î´óÖµ
-// Parameter: double min_first	µÚÒ»·½ÏòµÄ×îĞ¡Öµ
-// Parameter: double max_second	µÚ¶ş·½ÏòµÄ×î´óÖµ
-// Parameter: double min_second	µÚ¶ş·½ÏòµÄ×îĞ¡Öµ
+// Parameter: double max_first	ç¬¬ä¸€æ–¹å‘çš„æœ€å¤§å€¼
+// Parameter: double min_first	ç¬¬ä¸€æ–¹å‘çš„æœ€å°å€¼
+// Parameter: double max_second	ç¬¬äºŒæ–¹å‘çš„æœ€å¤§å€¼
+// Parameter: double min_second	ç¬¬äºŒæ–¹å‘çš„æœ€å°å€¼
 //************************************
 double CalcRatio(double max_first, double min_first, double max_second, double min_second)
 {
@@ -359,16 +418,16 @@ double CalcRatio(double max_first, double min_first, double max_second, double m
 // Access:    public 
 // Returns:   void
 // Qualifier:
-// Parameter: pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_skeleton	¹Ç¼ÜÏßµãÔÆ
-// Parameter: int n	ÇĞÆ¬Êı
-// Parameter: string direction	ÇĞÆ¬·½Ïò£¨´æÖüÓÃÎÄ¼şÃû£©
-// Parameter: double max_z	ÇĞÆ¬·½Ïò×î´óÖµ
-// Parameter: double min_z	ÇĞÆ¬·½Ïò×îĞ¡Öµ
-// Parameter: double * y	Ô­Ê¼µãÔÆyÖµ¼¯ºÏ
-// Parameter: double * z	Ô­Ê¼µãÔÆzÖµ¼¯ºÏ
-// Parameter: double * x	Ô­Ê¼µãÔÆxÖµ¼¯ºÏ
-// Parameter: int size		µãÔÆ´óĞ¡
-// Parameter: int mode		ÇĞÆ¬·½Ïò£¨x->0, y->1, z->2)
+// Parameter: pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_skeleton	éª¨æ¶çº¿ç‚¹äº‘
+// Parameter: int n	åˆ‡ç‰‡æ•°
+// Parameter: string direction	åˆ‡ç‰‡æ–¹å‘ï¼ˆå­˜è´®ç”¨æ–‡ä»¶åï¼‰
+// Parameter: double max_z	åˆ‡ç‰‡æ–¹å‘æœ€å¤§å€¼
+// Parameter: double min_z	åˆ‡ç‰‡æ–¹å‘æœ€å°å€¼
+// Parameter: double * y	åŸå§‹ç‚¹äº‘yå€¼é›†åˆ
+// Parameter: double * z	åŸå§‹ç‚¹äº‘zå€¼é›†åˆ
+// Parameter: double * x	åŸå§‹ç‚¹äº‘xå€¼é›†åˆ
+// Parameter: int size		ç‚¹äº‘å¤§å°
+// Parameter: int mode		åˆ‡ç‰‡æ–¹å‘ï¼ˆx->0, y->1, z->2)
 //************************************
 void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 					, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_skeleton
@@ -386,7 +445,8 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 	double* y = new double[size];
 	double* z = new double[size];
 
-	for (int i = 0; i < size; i++) {
+
+	for (int i = 0; i < size; ++i) {
 
 		x[i] = cloud->points[i].x;
 		y[i] = cloud->points[i].y;
@@ -395,80 +455,82 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 		//fout << "\n";
 		//fout << flush;
 	}
-	//ÇóxµÄ×î´óÖµ
+	
+	//æ±‚xçš„æœ€å¤§å€¼
 	double max_x = max_array(x, size);
-	//ÇóxµÄ×îĞ¡Öµ
+	//æ±‚xçš„æœ€å°å€¼
 	double min_x = min_array(x, size);
-	//ÇóyµÄ×î´óÖµ
+	//æ±‚yçš„æœ€å¤§å€¼
 	double max_y = max_array(y, size);
-	//ÇóyµÄ×îĞ¡Öµ
+	//æ±‚yçš„æœ€å°å€¼
 	double min_y = min_array(y, size);
-	//ÇózµÄ×î´óÖµ
+	//æ±‚zçš„æœ€å¤§å€¼
 	double max_z = max_array(z, size);
-	//ÇózµÄ×îĞ¡Öµ
+	//æ±‚zçš„æœ€å°å€¼
 	double min_z = min_array(z, size);
 
 	/****************Initialize************************/
-	//ÇĞÆ¬·½Ïò
+	//åˆ‡ç‰‡æ–¹å‘
 	string direction = "";
-	//µãÔÆÃÜ¶È
+	//ç‚¹äº‘å¯†åº¦
 	double res_cloud = 0.0;
-	//µ±Ç°ÇĞÆ¬Êı
+	//å½“å‰åˆ‡ç‰‡æ•°
 	int cut_n_3d = 0;
 	int cut_n_2d = 0;
-	//¼ÆÊıÆ÷
+	//è®¡æ•°å™¨
 	int coun = 0;
-	//ÇĞÆ¬µãÔÆ
+	//åˆ‡ç‰‡ç‚¹äº‘
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cuted_3d(new pcl::PointCloud <pcl::PointXYZ>);
-	//´æ´¢Â·¾¶
+	//å­˜å‚¨è·¯å¾„
 	string filepath_3d = "";
-	//´æ´¢Ãû³Æ
+	//å­˜å‚¨åç§°
 	string filename_3d = "";
-	//ÇĞÆ¬µãÔÆsize
+	//åˆ‡ç‰‡ç‚¹äº‘size
 	int size_2d = 0;
-	//ÇĞÆ¬µãÔÆÃÜ¶È
+	//åˆ‡ç‰‡ç‚¹äº‘å¯†åº¦
 	double res_cloud_2d = 0.0;
-	//ÇĞÆ¬µãÔÆ¼ÆËãÖµ
-	//ÇózµÄ×î´óÖµ
+	//åˆ‡ç‰‡ç‚¹äº‘è®¡ç®—å€¼
+	//æ±‚zçš„æœ€å¤§å€¼
 	double max_z_2d = 0.0;
-	//ÇózµÄ×îĞ¡Öµ	   
+	//æ±‚zçš„æœ€å°å€¼	   
 	double min_z_2d = 0.0;
-	//ÇóxµÄ×î´óÖµ	   
+	//æ±‚xçš„æœ€å¤§å€¼	   
 	double max_x_2d = 0.0;
-	//ÇóxµÄ×îĞ¡Öµ	   
+	//æ±‚xçš„æœ€å°å€¼	   
 	double min_x_2d = 0.0;
-	//ÇóyµÄ×î´óÖµ	   
+	//æ±‚yçš„æœ€å¤§å€¼	   
 	double max_y_2d = 0.0;
-	//ÇóyµÄ×îĞ¡Öµ	   
+	//æ±‚yçš„æœ€å°å€¼	   
 	double min_y_2d = 0.0;
-	//Á½¸ö·½Ïò¾àÀë±ÈÂÊ
+	//ä¸¤ä¸ªæ–¹å‘è·ç¦»æ¯”ç‡
 	double ratio_ = 0.0;
 
 	/********Execution**********/
 	switch (mode)
 	{
-		/**************X·½Ïò¹Ç¼Ü*****************/
+		/**************Xæ–¹å‘éª¨æ¶*****************/
 	case 0:
 		direction = "x";
 
 		_my_log << "/*****************X******************/" << endl;
 		
-		for (cut_n_3d = 0; cut_n_3d < n - 1; cut_n_3d++)
+
+		for (cut_n_3d = 0; cut_n_3d < n - 1; ++cut_n_3d)
 		{
-			
+
 			//pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cuted_2d(new pcl::PointCloud <pcl::PointXYZ>);
 
 			filepath_3d = "./cut_out_3d/" + direction;
 			if (0 != access(filepath_3d.c_str(), 0))
 			{
 				// if this folder not exist, create a new one.
-				//int flag_3d = mkdir(filepath_3d.c_str());   // ·µ»Ø 0 ±íÊ¾´´½¨³É¹¦£¬-1 ±íÊ¾Ê§°Ü
-				//»»³É ::_mkdir  ::_access Ò²ĞĞ£¬²»ÖªµÀÊ²Ã´ÒâË¼
+				//int flag_3d = mkdir(filepath_3d.c_str());   // è¿”å› 0 è¡¨ç¤ºåˆ›å»ºæˆåŠŸï¼Œ-1 è¡¨ç¤ºå¤±è´¥
+				//æ¢æˆ ::_mkdir  ::_access ä¹Ÿè¡Œï¼Œä¸çŸ¥é“ä»€ä¹ˆæ„æ€
 				CreateMultiLevel(filepath_3d);
 			}
 			filename_3d = filepath_3d + "/" + direction + "-" + to_string(cut_n_3d + 1) + ".pcd";
 
-			//zÖáµãÔÆÇĞÆ¬(3d->2d)
+			//zè½´ç‚¹äº‘åˆ‡ç‰‡(3d->2d)
 			cloud_cuted_3d = cutPointCloud(n, max_x, min_x, z, y, x, cloud_cuted_3d, size, cut_n_3d, filename_3d, mode, res_cloud, _my_log);
 
 			size_2d = cloud_cuted_3d->size();
@@ -476,7 +538,8 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 			double* y_2d = new double[size_2d];
 			double* z_2d = new double[size_2d];
 
-			for (int i = 0; i < size_2d; i++) {
+
+			for (int i = 0; i < size_2d; ++i) {
 
 				x_2d[i] = cloud_cuted_3d->points[i].x;
 				y_2d[i] = cloud_cuted_3d->points[i].y;
@@ -486,36 +549,37 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 				//fout << flush;
 			}
 
-			
-			//ÇózµÄ×î´óÖµ
+
+
+			//æ±‚zçš„æœ€å¤§å€¼
 			max_z_2d = max_array(z_2d, size_2d);
-			//ÇózµÄ×îĞ¡Öµ
+			//æ±‚zçš„æœ€å°å€¼
 			min_z_2d = min_array(z_2d, size_2d);
-			////ÇóxµÄ×î´óÖµ
+			////æ±‚xçš„æœ€å¤§å€¼
 			//max_x_2d = max_array(x_2d, size_2d);
-			////ÇóxµÄ×îĞ¡Öµ
+			////æ±‚xçš„æœ€å°å€¼
 			//min_x_2d = min_array(x_2d, size_2d);
-			//ÇóyµÄ×î´óÖµ
+			//æ±‚yçš„æœ€å¤§å€¼
 			max_y_2d = max_array(y_2d, size_2d);
-			//ÇóyµÄ×îĞ¡Öµ
+			//æ±‚yçš„æœ€å°å€¼
 			min_y_2d = min_array(y_2d, size_2d);
 
 			//double dis_x_2d = max_x_2d - min_x_2d;
 			//double dis_y_2d = max_y_2d - min_y_2d;
 			//double ratio_ = abs(dis_x_2d) / abs(dis_y_2d);
-			
+
 
 			ratio_ = CalcRatio(max_y_2d, min_y_2d, max_z_2d, min_z_2d);
 
 			//switch (mode)
 			//{
-			//	//xÎªÇĞÆ¬·½Ïò¡£y/z
+			//	//xä¸ºåˆ‡ç‰‡æ–¹å‘ã€‚y/z
 			//case 0:
 			//	ratio_ = CalcRatio(max_y_2d, min_y_2d, max_z_2d, min_z_2d);
-			//	//yÎªÇĞÆ¬·½Ïò¡£x/z
+			//	//yä¸ºåˆ‡ç‰‡æ–¹å‘ã€‚x/z
 			//case 1:
 			//	ratio_ = CalcRatio(max_x_2d, min_x_2d, max_z_2d, min_z_2d);
-			//	//zÎªÇĞÆ¬·½Ïò¡£x/y
+			//	//zä¸ºåˆ‡ç‰‡æ–¹å‘ã€‚x/y
 			//case 2:
 			//	ratio_ = CalcRatio(max_x_2d, min_x_2d, max_y_2d, min_y_2d);
 			//}
@@ -526,26 +590,30 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 
 			if (cluster_2d.size() != 1 || (cluster_2d.size() == 1 && abs(ratio_ - 1.0) < 0.01))
 			{
-				coun++;
+				++coun;
 				std::cout << "number of clusters is : " << cluster_2d.size() << endl;
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_temp_centroid(new pcl::PointCloud <pcl::PointXYZ>);
+
 				for (auto it : cluster_2d)
 				{
 					cloud_temp_centroid->clear();
+
 					for (auto pit = it.indices.begin(); pit != it.indices.end(); ++pit)
 					{
 						cloud_temp_centroid->points.push_back(cloud_cuted_3d->points[*pit]);
 					}
+
 					cloud_temp_centroid->width = cloud_temp_centroid->points.size();
 					cloud_temp_centroid->height = 1;
 					cloud_temp_centroid->is_dense = true;
-					//´´½¨´æ´¢µãÔÆÖØĞÄµÄ¶ÔÏó
+					//åˆ›å»ºå­˜å‚¨ç‚¹äº‘é‡å¿ƒçš„å¯¹è±¡
 					Eigen::Vector4f centroid;
-					//¼ÆËãÖØĞÄµã
+					//è®¡ç®—é‡å¿ƒç‚¹
 					pcl::compute3DCentroid(*cloud_temp_centroid, centroid);
-					//Ìí¼ÓÖØĞÄµ½¹Ç¼ÜÖĞ
+					//æ·»åŠ é‡å¿ƒåˆ°éª¨æ¶ä¸­
 					cloud_skeleton->push_back(PointXYZ(centroid[0], centroid[1], centroid[2]));
 				}
+
 
 			}
 			else
@@ -553,41 +621,45 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 
 
 			/*
-			for (cut_n_2d = 0; cut_n_2d < n - 1; cut_n_2d++)
+
+			#pragma omp parallel for
+			for (cut_n_2d = 0; cut_n_2d < n - 1; ++cut_n_2d)
 			{
 
 			string filepath_2d = filepath_3d + "/cut_2d/x";
 			if (0 != access(filepath_2d.c_str(), 0))
 			{
 			// if this folder not exist, create a new one.
-			CreateMultiLevel(filepath_2d);   // ·µ»Ø 0 ±íÊ¾´´½¨³É¹¦£¬-1 ±íÊ¾Ê§°Ü
-			//»»³É ::_mkdir  ::_access Ò²ĞĞ£¬²»ÖªµÀÊ²Ã´ÒâË¼
+			CreateMultiLevel(filepath_2d);   // è¿”å› 0 è¡¨ç¤ºåˆ›å»ºæˆåŠŸï¼Œ-1 è¡¨ç¤ºå¤±è´¥
+			//æ¢æˆ ::_mkdir  ::_access ä¹Ÿè¡Œï¼Œä¸çŸ¥é“ä»€ä¹ˆæ„æ€
 			}
 			string filename_2d = filepath_2d + "/x-" + to_string(cut_n_2d + 1) + ".pcd";
-			//xÖáµãÔÆÇĞÆ¬(2d->1d)
+			//xè½´ç‚¹äº‘åˆ‡ç‰‡(2d->1d)
 			cloud_cuted_2d = cutPointCloud(n, max_x, min_x, z_2d, y_2d, x_2d, cloud_cuted_2d, size_2d, cut_n_2d, filename_2d, 0, res_cloud_2d);
-			//xÖáµãÔÆÇĞÆ¬(2d->1d)
+			//xè½´ç‚¹äº‘åˆ‡ç‰‡(2d->1d)
 			//cloud_cuted_2d = cutPointCloud(n, max_x, min_x, z_2d, x_2d, y_2d, cloud_cuted_2d, size_2d, cut_n_2d, filename_2d, 1, res_cloud_2d);
 
-			//´´½¨´æ´¢µãÔÆÖØĞÄµÄ¶ÔÏó
+			//åˆ›å»ºå­˜å‚¨ç‚¹äº‘é‡å¿ƒçš„å¯¹è±¡
 			Eigen::Vector4f centroid;
-			//¼ÆËãÖØĞÄµã
+			//è®¡ç®—é‡å¿ƒç‚¹
 			pcl::compute3DCentroid(*cloud_cuted_2d, centroid);
-			//Ìí¼ÓÖØĞÄµ½¹Ç¼ÜÖĞ
+			//æ·»åŠ é‡å¿ƒåˆ°éª¨æ¶ä¸­
 			cloud_skeleton->push_back(PointXYZ(centroid[0], centroid[1], centroid[2]));
 			}
 			*/
 		}
 
 		break;
+		
 
-		/**************Y·½Ïò¹Ç¼Ü*****************/
+		/**************Yæ–¹å‘éª¨æ¶*****************/
 	case 1:
 		direction = "y";
 
 		_my_log << "/*************************Y**************************/" << endl;
 
-		for (cut_n_3d = 0; cut_n_3d < n - 1; cut_n_3d++)
+
+		for (cut_n_3d = 0; cut_n_3d < n - 1; ++cut_n_3d)
 		{
 			//pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cuted_3d(new pcl::PointCloud <pcl::PointXYZ>);
 			//pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cuted_2d(new pcl::PointCloud <pcl::PointXYZ>);
@@ -596,20 +668,21 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 			if (0 != access(filepath_3d.c_str(), 0))
 			{
 				// if this folder not exist, create a new one.
-				//int flag_3d = mkdir(filepath_3d.c_str());   // ·µ»Ø 0 ±íÊ¾´´½¨³É¹¦£¬-1 ±íÊ¾Ê§°Ü
-				//»»³É ::_mkdir  ::_access Ò²ĞĞ£¬²»ÖªµÀÊ²Ã´ÒâË¼
+				//int flag_3d = mkdir(filepath_3d.c_str());   // è¿”å› 0 è¡¨ç¤ºåˆ›å»ºæˆåŠŸï¼Œ-1 è¡¨ç¤ºå¤±è´¥
+				//æ¢æˆ ::_mkdir  ::_access ä¹Ÿè¡Œï¼Œä¸çŸ¥é“ä»€ä¹ˆæ„æ€
 				CreateMultiLevel(filepath_3d);
 			}
 			filename_3d = filepath_3d + "/" + direction + "-" + to_string(cut_n_3d + 1) + ".pcd";
 
-			//zÖáµãÔÆÇĞÆ¬(3d->2d)
+			//zè½´ç‚¹äº‘åˆ‡ç‰‡(3d->2d)
 			cloud_cuted_3d = cutPointCloud(n, max_y, min_y, x, z, y, cloud_cuted_3d, size, cut_n_3d, filename_3d, mode, res_cloud, _my_log);
 
 			size_2d = cloud_cuted_3d->size();
 			double* x_2d = new double[size_2d];
 			double* y_2d = new double[size_2d];
 			double* z_2d = new double[size_2d];
-			for (int i = 0; i < size_2d; i++) {
+
+			for (int i = 0; i < size_2d; ++i) {
 
 				x_2d[i] = cloud_cuted_3d->points[i].x;
 				y_2d[i] = cloud_cuted_3d->points[i].y;
@@ -619,18 +692,18 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 				//fout << flush;
 			}
 
-			
-			//ÇózµÄ×î´óÖµ
+
+			//æ±‚zçš„æœ€å¤§å€¼
 			max_z_2d = max_array(z_2d, size_2d);
-			//ÇózµÄ×îĞ¡Öµ
+			//æ±‚zçš„æœ€å°å€¼
 			min_z_2d = min_array(z_2d, size_2d);
-			//ÇóxµÄ×î´óÖµ
+			//æ±‚xçš„æœ€å¤§å€¼
 			max_x_2d = max_array(x_2d, size_2d);
-			//ÇóxµÄ×îĞ¡Öµ
+			//æ±‚xçš„æœ€å°å€¼
 			min_x_2d = min_array(x_2d, size_2d);
-			////ÇóyµÄ×î´óÖµ
+			////æ±‚yçš„æœ€å¤§å€¼
 			//max_y_2d = max_array(y_2d, size_2d);
-			////ÇóyµÄ×îĞ¡Öµ
+			////æ±‚yçš„æœ€å°å€¼
 			//min_y_2d = min_array(y_2d, size_2d);
 
 			//double dis_x_2d = max_x_2d - min_x_2d;
@@ -641,13 +714,13 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 
 			//switch (mode)
 			//{
-			//	//xÎªÇĞÆ¬·½Ïò¡£y/z
+			//	//xä¸ºåˆ‡ç‰‡æ–¹å‘ã€‚y/z
 			//case 0:
 			//	ratio_ = CalcRatio(max_y_2d, min_y_2d, max_z_2d, min_z_2d);
-			//	//yÎªÇĞÆ¬·½Ïò¡£x/z
+			//	//yä¸ºåˆ‡ç‰‡æ–¹å‘ã€‚x/z
 			//case 1:
 			//	ratio_ = CalcRatio(max_x_2d, min_x_2d, max_z_2d, min_z_2d);
-			//	//zÎªÇĞÆ¬·½Ïò¡£x/y
+			//	//zä¸ºåˆ‡ç‰‡æ–¹å‘ã€‚x/y
 			//case 2:
 			//	ratio_ = CalcRatio(max_x_2d, min_x_2d, max_y_2d, min_y_2d);
 			//}
@@ -658,26 +731,30 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 
 			if (cluster_2d.size() != 1 || (cluster_2d.size() == 1 && abs(ratio_ - 1.0) < 0.01))
 			{
-				coun++;
+				++coun;
 				std::cout << "number of clusters is : " << cluster_2d.size() << endl;
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_temp_centroid(new pcl::PointCloud <pcl::PointXYZ>);
+
 				for (auto it : cluster_2d)
 				{
 					cloud_temp_centroid->clear();
+
 					for (auto pit = it.indices.begin(); pit != it.indices.end(); ++pit)
 					{
 						cloud_temp_centroid->points.push_back(cloud_cuted_3d->points[*pit]);
 					}
+
 					cloud_temp_centroid->width = cloud_temp_centroid->points.size();
 					cloud_temp_centroid->height = 1;
 					cloud_temp_centroid->is_dense = true;
-					//´´½¨´æ´¢µãÔÆÖØĞÄµÄ¶ÔÏó
+					//åˆ›å»ºå­˜å‚¨ç‚¹äº‘é‡å¿ƒçš„å¯¹è±¡
 					Eigen::Vector4f centroid;
-					//¼ÆËãÖØĞÄµã
+					//è®¡ç®—é‡å¿ƒç‚¹
 					pcl::compute3DCentroid(*cloud_temp_centroid, centroid);
-					//Ìí¼ÓÖØĞÄµ½¹Ç¼ÜÖĞ
+					//æ·»åŠ é‡å¿ƒåˆ°éª¨æ¶ä¸­
 					cloud_skeleton->push_back(PointXYZ(centroid[0], centroid[1], centroid[2]));
 				}
+
 
 			}
 			else
@@ -685,41 +762,45 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 
 
 			/*
-			for (cut_n_2d = 0; cut_n_2d < n - 1; cut_n_2d++)
+
+			#pragma omp parallel for
+			for (cut_n_2d = 0; cut_n_2d < n - 1; ++cut_n_2d)
 			{
 
 			string filepath_2d = filepath_3d + "/cut_2d/x";
 			if (0 != access(filepath_2d.c_str(), 0))
 			{
 			// if this folder not exist, create a new one.
-			CreateMultiLevel(filepath_2d);   // ·µ»Ø 0 ±íÊ¾´´½¨³É¹¦£¬-1 ±íÊ¾Ê§°Ü
-			//»»³É ::_mkdir  ::_access Ò²ĞĞ£¬²»ÖªµÀÊ²Ã´ÒâË¼
+			CreateMultiLevel(filepath_2d);   // è¿”å› 0 è¡¨ç¤ºåˆ›å»ºæˆåŠŸï¼Œ-1 è¡¨ç¤ºå¤±è´¥
+			//æ¢æˆ ::_mkdir  ::_access ä¹Ÿè¡Œï¼Œä¸çŸ¥é“ä»€ä¹ˆæ„æ€
 			}
 			string filename_2d = filepath_2d + "/x-" + to_string(cut_n_2d + 1) + ".pcd";
-			//xÖáµãÔÆÇĞÆ¬(2d->1d)
+			//xè½´ç‚¹äº‘åˆ‡ç‰‡(2d->1d)
 			cloud_cuted_2d = cutPointCloud(n, max_x, min_x, z_2d, y_2d, x_2d, cloud_cuted_2d, size_2d, cut_n_2d, filename_2d, 0, res_cloud_2d);
-			//xÖáµãÔÆÇĞÆ¬(2d->1d)
+			//xè½´ç‚¹äº‘åˆ‡ç‰‡(2d->1d)
 			//cloud_cuted_2d = cutPointCloud(n, max_x, min_x, z_2d, x_2d, y_2d, cloud_cuted_2d, size_2d, cut_n_2d, filename_2d, 1, res_cloud_2d);
 
-			//´´½¨´æ´¢µãÔÆÖØĞÄµÄ¶ÔÏó
+			//åˆ›å»ºå­˜å‚¨ç‚¹äº‘é‡å¿ƒçš„å¯¹è±¡
 			Eigen::Vector4f centroid;
-			//¼ÆËãÖØĞÄµã
+			//è®¡ç®—é‡å¿ƒç‚¹
 			pcl::compute3DCentroid(*cloud_cuted_2d, centroid);
-			//Ìí¼ÓÖØĞÄµ½¹Ç¼ÜÖĞ
+			//æ·»åŠ é‡å¿ƒåˆ°éª¨æ¶ä¸­
 			cloud_skeleton->push_back(PointXYZ(centroid[0], centroid[1], centroid[2]));
 			}
 			*/
 		}
 
 		break;
+		
 
-		/**************Z·½Ïò¹Ç¼Ü*****************/
+		/**************Zæ–¹å‘éª¨æ¶*****************/
 	case 2:
 		direction = "z";
 
 		_my_log << "/******************************Z**********************************/" << endl;
 
-		for (cut_n_3d = 0; cut_n_3d < n - 1; cut_n_3d++)
+
+		for (cut_n_3d = 0; cut_n_3d < n - 1; ++cut_n_3d)
 		{
 			//pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cuted_3d(new pcl::PointCloud <pcl::PointXYZ>);
 			//pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cuted_2d(new pcl::PointCloud <pcl::PointXYZ>);
@@ -728,13 +809,13 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 			if (0 != access(filepath_3d.c_str(), 0))
 			{
 				// if this folder not exist, create a new one.
-				//int flag_3d = mkdir(filepath_3d.c_str());   // ·µ»Ø 0 ±íÊ¾´´½¨³É¹¦£¬-1 ±íÊ¾Ê§°Ü
-				//»»³É ::_mkdir  ::_access Ò²ĞĞ£¬²»ÖªµÀÊ²Ã´ÒâË¼
+				//int flag_3d = mkdir(filepath_3d.c_str());   // è¿”å› 0 è¡¨ç¤ºåˆ›å»ºæˆåŠŸï¼Œ-1 è¡¨ç¤ºå¤±è´¥
+				//æ¢æˆ ::_mkdir  ::_access ä¹Ÿè¡Œï¼Œä¸çŸ¥é“ä»€ä¹ˆæ„æ€
 				CreateMultiLevel(filepath_3d);
 			}
 			filename_3d = filepath_3d + "/" + direction + "-" + to_string(cut_n_3d + 1) + ".pcd";
 
-			//zÖáµãÔÆÇĞÆ¬(3d->2d)
+			//zè½´ç‚¹äº‘åˆ‡ç‰‡(3d->2d)
 			cloud_cuted_3d = cutPointCloud(n, max_z, min_z, y, x, z, cloud_cuted_3d, size, cut_n_3d, filename_3d, mode, res_cloud, _my_log);
 
 			size_2d = cloud_cuted_3d->size();
@@ -742,7 +823,8 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 			double* y_2d = new double[size_2d];
 			double* z_2d = new double[size_2d];
 
-			for (int i = 0; i < size_2d; i++) {
+
+			for (int i = 0; i < size_2d; ++i) {
 
 				x_2d[i] = cloud_cuted_3d->points[i].x;
 				y_2d[i] = cloud_cuted_3d->points[i].y;
@@ -752,18 +834,18 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 				//fout << flush;
 			}
 
-			
-			////ÇózµÄ×î´óÖµ
+
+			////æ±‚zçš„æœ€å¤§å€¼
 			//max_z_2d = max_array(z_2d, size_2d);
-			////ÇózµÄ×îĞ¡Öµ
+			////æ±‚zçš„æœ€å°å€¼
 			//min_z_2d = min_array(z_2d, size_2d);
-			//ÇóxµÄ×î´óÖµ
+			//æ±‚xçš„æœ€å¤§å€¼
 			max_x_2d = max_array(x_2d, size_2d);
-			//ÇóxµÄ×îĞ¡Öµ
+			//æ±‚xçš„æœ€å°å€¼
 			min_x_2d = min_array(x_2d, size_2d);
-			//ÇóyµÄ×î´óÖµ
+			//æ±‚yçš„æœ€å¤§å€¼
 			max_y_2d = max_array(y_2d, size_2d);
-			//ÇóxµÄ×îĞ¡Öµ
+			//æ±‚xçš„æœ€å°å€¼
 			min_y_2d = min_array(y_2d, size_2d);
 
 			//double dis_x_2d = max_x_2d - min_x_2d;
@@ -774,13 +856,13 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 
 			//switch (mode)
 			//{
-			//	//xÎªÇĞÆ¬·½Ïò¡£y/z
+			//	//xä¸ºåˆ‡ç‰‡æ–¹å‘ã€‚y/z
 			//case 0:
 			//	ratio_ = CalcRatio(max_y_2d, min_y_2d, max_z_2d, min_z_2d);
-			//	//yÎªÇĞÆ¬·½Ïò¡£x/z
+			//	//yä¸ºåˆ‡ç‰‡æ–¹å‘ã€‚x/z
 			//case 1:
 			//	ratio_ = CalcRatio(max_x_2d, min_x_2d, max_z_2d, min_z_2d);
-			//	//zÎªÇĞÆ¬·½Ïò¡£x/y
+			//	//zä¸ºåˆ‡ç‰‡æ–¹å‘ã€‚x/y
 			//case 2:
 			//	ratio_ = CalcRatio(max_x_2d, min_x_2d, max_y_2d, min_y_2d);
 			//}
@@ -791,26 +873,30 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 
 			if (cluster_2d.size() != 1 || (cluster_2d.size() == 1 && abs(ratio_ - 1.0) < 0.01))
 			{
-				coun++;
+				++coun;
 				std::cout << "number of clusters is : " << cluster_2d.size() << endl;
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_temp_centroid(new pcl::PointCloud <pcl::PointXYZ>);
+
 				for (auto it : cluster_2d)
 				{
 					cloud_temp_centroid->clear();
+
 					for (auto pit = it.indices.begin(); pit != it.indices.end(); ++pit)
 					{
 						cloud_temp_centroid->points.push_back(cloud_cuted_3d->points[*pit]);
 					}
+
 					cloud_temp_centroid->width = cloud_temp_centroid->points.size();
 					cloud_temp_centroid->height = 1;
 					cloud_temp_centroid->is_dense = true;
-					//´´½¨´æ´¢µãÔÆÖØĞÄµÄ¶ÔÏó
+					//åˆ›å»ºå­˜å‚¨ç‚¹äº‘é‡å¿ƒçš„å¯¹è±¡
 					Eigen::Vector4f centroid;
-					//¼ÆËãÖØĞÄµã
+					//è®¡ç®—é‡å¿ƒç‚¹
 					pcl::compute3DCentroid(*cloud_temp_centroid, centroid);
-					//Ìí¼ÓÖØĞÄµ½¹Ç¼ÜÖĞ
+					//æ·»åŠ é‡å¿ƒåˆ°éª¨æ¶ä¸­
 					cloud_skeleton->push_back(PointXYZ(centroid[0], centroid[1], centroid[2]));
 				}
+
 
 			}
 			else
@@ -818,32 +904,35 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 
 
 			/*
-			for (cut_n_2d = 0; cut_n_2d < n - 1; cut_n_2d++)
+
+			#pragma omp parallel for
+			for (cut_n_2d = 0; cut_n_2d < n - 1; ++cut_n_2d)
 			{
 
 			string filepath_2d = filepath_3d + "/cut_2d/x";
 			if (0 != access(filepath_2d.c_str(), 0))
 			{
 			// if this folder not exist, create a new one.
-			CreateMultiLevel(filepath_2d);   // ·µ»Ø 0 ±íÊ¾´´½¨³É¹¦£¬-1 ±íÊ¾Ê§°Ü
-			//»»³É ::_mkdir  ::_access Ò²ĞĞ£¬²»ÖªµÀÊ²Ã´ÒâË¼
+			CreateMultiLevel(filepath_2d);   // è¿”å› 0 è¡¨ç¤ºåˆ›å»ºæˆåŠŸï¼Œ-1 è¡¨ç¤ºå¤±è´¥
+			//æ¢æˆ ::_mkdir  ::_access ä¹Ÿè¡Œï¼Œä¸çŸ¥é“ä»€ä¹ˆæ„æ€
 			}
 			string filename_2d = filepath_2d + "/x-" + to_string(cut_n_2d + 1) + ".pcd";
-			//xÖáµãÔÆÇĞÆ¬(2d->1d)
+			//xè½´ç‚¹äº‘åˆ‡ç‰‡(2d->1d)
 			cloud_cuted_2d = cutPointCloud(n, max_x, min_x, z_2d, y_2d, x_2d, cloud_cuted_2d, size_2d, cut_n_2d, filename_2d, 0, res_cloud_2d);
-			//xÖáµãÔÆÇĞÆ¬(2d->1d)
+			//xè½´ç‚¹äº‘åˆ‡ç‰‡(2d->1d)
 			//cloud_cuted_2d = cutPointCloud(n, max_x, min_x, z_2d, x_2d, y_2d, cloud_cuted_2d, size_2d, cut_n_2d, filename_2d, 1, res_cloud_2d);
 
-			//´´½¨´æ´¢µãÔÆÖØĞÄµÄ¶ÔÏó
+			//åˆ›å»ºå­˜å‚¨ç‚¹äº‘é‡å¿ƒçš„å¯¹è±¡
 			Eigen::Vector4f centroid;
-			//¼ÆËãÖØĞÄµã
+			//è®¡ç®—é‡å¿ƒç‚¹
 			pcl::compute3DCentroid(*cloud_cuted_2d, centroid);
-			//Ìí¼ÓÖØĞÄµ½¹Ç¼ÜÖĞ
+			//æ·»åŠ é‡å¿ƒåˆ°éª¨æ¶ä¸­
 			cloud_skeleton->push_back(PointXYZ(centroid[0], centroid[1], centroid[2]));
 			}
 			*/
 		}
 		break;
+		
 	}
 	
 
@@ -854,57 +943,65 @@ void CreateSkeleton(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud
 int main()
 {
 
-	//DWORD start_time = GetTickCount(); //¿ªÊ¼¼ÆÊ±
-									   //³õÊ¼»¯PointCloud¶ÔÏó
+	DWORD start_time = GetTickCount(); //å¼€å§‹è®¡æ—¶
+									   //åˆå§‹åŒ–PointCloudå¯¹è±¡
+	ofstream _my_log("_my_log.txt");
+
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 	////pushback
 	////cloud->push_back(PointXYZ(0,0,0));
 	//
-	////´´½¨mesh¶ÔÏó
+	////åˆ›å»ºmeshå¯¹è±¡
 	//pcl::PolygonMesh mesh;
-	////¶ÁÈ¡polygonÎÄ¼ş£¬obj¸ñÊ½¶ÁÈ¡Îªmesh
+	////è¯»å–polygonæ–‡ä»¶ï¼Œobjæ ¼å¼è¯»å–ä¸ºmesh
 	//pcl::io::loadPolygonFile("zhengti-moxing-xie.obj", mesh);
 	////pcl::io::loadPolygonFilePLY("zhengti-moxing.ply", mesh);
 	//
-	////³õÊ¼»¯½á¹û´æ´¢µãÔÆfinal
+	////åˆå§‹åŒ–ç»“æœå­˜å‚¨ç‚¹äº‘final
 	//pcl::PointCloud<pcl::PointXYZ>::Ptr final(new pcl::PointCloud<pcl::PointXYZ>);
-	////½«mesh¸ñÊ½×ª»»ÎªPointCloud¸ñÊ½ ·½±ã¶ÁÈ¡
+	////å°†meshæ ¼å¼è½¬æ¢ä¸ºPointCloudæ ¼å¼ æ–¹ä¾¿è¯»å–
 	//pcl::fromPCLPointCloud2(mesh.cloud, *cloud);
-	////×ª´æÎª¿É¶ÁÈ¡µÄPCDÎÄ¼ş¸ñÊ½
+	////è½¬å­˜ä¸ºå¯è¯»å–çš„PCDæ–‡ä»¶æ ¼å¼
 	//pcl::io::savePCDFileASCII("zhengti-moxing-xie.pcd", *cloud);
 	//
-	////¿ÉÊä³öµãµÄÊıÁ¿
+	////å¯è¾“å‡ºç‚¹çš„æ•°é‡
 	//std::cout << cloud->size() << endl;
 	//std::cout << "OK!";
 
 
 
-	//¼ÓÔØµãÔÆÎÄ¼ş
-	pcl::io::loadPCDFile("zhengti-moxing-xie.pcd", *cloud);
+	//åŠ è½½ç‚¹äº‘æ–‡ä»¶
+	pcl::io::loadPCDFile("zhengti-dianyun.pcd", *cloud);
 
 	//std::cout << "PointCloud before filtering has: " << cloud->points.size() << " data points." << std::endl;
 	std::cerr << "Point cloud data: " << cloud->points.size() << " points" << std::endl;
 
-	//ÇóµãÔÆsize´óĞ¡
+	//æ±‚ç‚¹äº‘sizeå¤§å°
 	int size = cloud->points.size();
-	
-	//³õÊ¼»¯±ß½ç¶ÔÏó
+
+	DWORD end_time = GetTickCount();
+
+	//calc loaing file running time
+	_my_log << "loading time is :" + to_string(end_time - start_time)<< endl;
+	start_time = GetTickCount();
+
+	//åˆå§‹åŒ–è¾¹ç•Œå¯¹è±¡
 	//pcl::PointCloud<pcl::Boundary> boundaries;
-	//³õÊ¼»¯ÇĞÆ¬µãÔÆ
+	//åˆå§‹åŒ–åˆ‡ç‰‡ç‚¹äº‘
 	//pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cuted_3d(new pcl::PointCloud <pcl::PointXYZ>);
-	//³õÊ¼»¯gujiaµãÔÆ
+	//åˆå§‹åŒ–gujiaç‚¹äº‘
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_skeleton(new pcl::PointCloud <pcl::PointXYZ>);
-	//³õÊ¼»¯´æ´¢±ß½ç¶ÔÏóµÄµãÔÆ
+	//åˆå§‹åŒ–å­˜å‚¨è¾¹ç•Œå¯¹è±¡çš„ç‚¹äº‘
 	//pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_boundaries(new pcl::PointCloud <pcl::PointXYZ>);
 	//pcl::PointCloud<pcl::Normal>::Ptr cloud_normal(new pcl::PointCloud<pcl::Normal>);
 
-	//Æ¬Êı
+	//ç‰‡æ•°
 	int n = 80;
 
-	//µãÔÆÃÜ¶È
+	//ç‚¹äº‘å¯†åº¦
 	double res_cloud = 0.0;
 
-	//µ±Ç°ÇĞÆ¬Êı
+	//å½“å‰åˆ‡ç‰‡æ•°
 	int cut_n_3d = 0;
 	int cut_n_2d = 0;
 
@@ -913,7 +1010,9 @@ int main()
 
 
 	/*
-	for (cut_n_3d = 0; cut_n_3d < n - 1; cut_n_3d++)
+
+	#pragma omp parallel for
+	for (cut_n_3d = 0; cut_n_3d < n - 1; ++cut_n_3d)
 	{
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cuted_3d(new pcl::PointCloud <pcl::PointXYZ>);
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cuted_2d(new pcl::PointCloud <pcl::PointXYZ>);
@@ -921,20 +1020,22 @@ int main()
 		if (0 != access(filepath_3d.c_str(), 0))
 		{
 			// if this folder not exist, create a new one.
-			//int flag_3d = mkdir(filepath_3d.c_str());   // ·µ»Ø 0 ±íÊ¾´´½¨³É¹¦£¬-1 ±íÊ¾Ê§°Ü
-										 //»»³É ::_mkdir  ::_access Ò²ĞĞ£¬²»ÖªµÀÊ²Ã´ÒâË¼
+			//int flag_3d = mkdir(filepath_3d.c_str());   // è¿”å› 0 è¡¨ç¤ºåˆ›å»ºæˆåŠŸï¼Œ-1 è¡¨ç¤ºå¤±è´¥
+										 //æ¢æˆ ::_mkdir  ::_access ä¹Ÿè¡Œï¼Œä¸çŸ¥é“ä»€ä¹ˆæ„æ€
 			CreateMultiLevel(filepath_3d);
 		}
 		string filename_3d = filepath_3d  + "/z-" + to_string(cut_n_3d + 1) + ".pcd";
 
-		//zÖáµãÔÆÇĞÆ¬(3d->2d)
+		//zè½´ç‚¹äº‘åˆ‡ç‰‡(3d->2d)
 		cloud_cuted_3d = cutPointCloud(n, max_z, min_z, y, x, z, cloud_cuted_3d, size, cut_n_3d, filename_3d, 2, res_cloud);
 
 		int size_2d = cloud_cuted_3d->size();
 		double* x_2d = new double[size_2d];
 		double* y_2d = new double[size_2d];
 		double* z_2d = new double[size_2d];
-		for (int i = 0; i < size_2d; i++) {
+
+		#pragma omp parallel for
+		for (int i = 0; i < size_2d; ++i) {
 
 			x_2d[i] = cloud_cuted_3d->points[i].x;
 			y_2d[i] = cloud_cuted_3d->points[i].y;
@@ -945,13 +1046,13 @@ int main()
 		}
 
 		double res_cloud_2d = 0.0;
-		//ÇóxµÄ×î´óÖµ
+		//æ±‚xçš„æœ€å¤§å€¼
 		double max_x_2d = max_array(x_2d, size_2d);
-		//ÇóxµÄ×îĞ¡Öµ
+		//æ±‚xçš„æœ€å°å€¼
 		double min_x_2d = min_array(x_2d, size_2d);
-		//ÇóyµÄ×î´óÖµ
+		//æ±‚yçš„æœ€å¤§å€¼
 		double max_y_2d = max_array(y_2d, size_2d);
-		//ÇóxµÄ×îĞ¡Öµ
+		//æ±‚xçš„æœ€å°å€¼
 		double min_y_2d = min_array(y_2d, size_2d);
 
 		double dis_x_2d = max_x_2d - min_x_2d;
@@ -964,12 +1065,16 @@ int main()
 
 		if (cluster_2d.size() != 1 || (cluster_2d.size() == 1 && abs(ratio_xy - 1.0) < 0.01))
 		{
-			coun++;
+			++coun;
 			std::cout << "number of clusters is : " << cluster_2d.size() << endl;
 			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_temp_centroid(new pcl::PointCloud <pcl::PointXYZ>);
+
+			#pragma omp parallel for
 			for (auto it : cluster_2d)
 			{
 				cloud_temp_centroid->clear();
+
+				#pragma omp parallel for
 				for (auto pit = it.indices.begin(); pit != it.indices.end(); ++pit)
 				{
 					cloud_temp_centroid->points.push_back(cloud_cuted_3d->points[*pit]);
@@ -977,11 +1082,11 @@ int main()
 				cloud_temp_centroid->width = cloud_temp_centroid->points.size();
 				cloud_temp_centroid->height = 1;
 				cloud_temp_centroid->is_dense = true;
-				//´´½¨´æ´¢µãÔÆÖØĞÄµÄ¶ÔÏó
+				//åˆ›å»ºå­˜å‚¨ç‚¹äº‘é‡å¿ƒçš„å¯¹è±¡
 				Eigen::Vector4f centroid;
-				//¼ÆËãÖØĞÄµã
+				//è®¡ç®—é‡å¿ƒç‚¹
 				pcl::compute3DCentroid(*cloud_temp_centroid, centroid);
-				//Ìí¼ÓÖØĞÄµ½¹Ç¼ÜÖĞ
+				//æ·»åŠ é‡å¿ƒåˆ°éª¨æ¶ä¸­
 				cloud_skeleton->push_back(PointXYZ(centroid[0], centroid[1], centroid[2]));
 			}
 
@@ -995,28 +1100,29 @@ int main()
 
 
 
-		
-		for (cut_n_2d = 0; cut_n_2d < n - 1; cut_n_2d++)
+
+#pragma omp parallel for
+		for (cut_n_2d = 0; cut_n_2d < n - 1; ++cut_n_2d)
 		{
 
 			string filepath_2d = filepath_3d + "/cut_2d/x";
 			if (0 != access(filepath_2d.c_str(), 0))
 			{
 				// if this folder not exist, create a new one.
-				CreateMultiLevel(filepath_2d);   // ·µ»Ø 0 ±íÊ¾´´½¨³É¹¦£¬-1 ±íÊ¾Ê§°Ü
-											  //»»³É ::_mkdir  ::_access Ò²ĞĞ£¬²»ÖªµÀÊ²Ã´ÒâË¼
+				CreateMultiLevel(filepath_2d);   // è¿”å› 0 è¡¨ç¤ºåˆ›å»ºæˆåŠŸï¼Œ-1 è¡¨ç¤ºå¤±è´¥
+											  //æ¢æˆ ::_mkdir  ::_access ä¹Ÿè¡Œï¼Œä¸çŸ¥é“ä»€ä¹ˆæ„æ€
 			}
 			string filename_2d = filepath_2d + "/x-" + to_string(cut_n_2d + 1) + ".pcd";
-			//xÖáµãÔÆÇĞÆ¬(2d->1d)
+			//xè½´ç‚¹äº‘åˆ‡ç‰‡(2d->1d)
 			cloud_cuted_2d = cutPointCloud(n, max_x, min_x, z_2d, y_2d, x_2d, cloud_cuted_2d, size_2d, cut_n_2d, filename_2d, 0, res_cloud_2d);
-			//xÖáµãÔÆÇĞÆ¬(2d->1d)
+			//xè½´ç‚¹äº‘åˆ‡ç‰‡(2d->1d)
 			//cloud_cuted_2d = cutPointCloud(n, max_x, min_x, z_2d, x_2d, y_2d, cloud_cuted_2d, size_2d, cut_n_2d, filename_2d, 1, res_cloud_2d);
 
-			//´´½¨´æ´¢µãÔÆÖØĞÄµÄ¶ÔÏó
+			//åˆ›å»ºå­˜å‚¨ç‚¹äº‘é‡å¿ƒçš„å¯¹è±¡
 			Eigen::Vector4f centroid;
-			//¼ÆËãÖØĞÄµã
+			//è®¡ç®—é‡å¿ƒç‚¹
 			pcl::compute3DCentroid(*cloud_cuted_2d, centroid);
-			//Ìí¼ÓÖØĞÄµ½¹Ç¼ÜÖĞ
+			//æ·»åŠ é‡å¿ƒåˆ°éª¨æ¶ä¸­
 			cloud_skeleton->push_back(PointXYZ(centroid[0], centroid[1], centroid[2]));
 		}
 
@@ -1024,20 +1130,33 @@ int main()
 	*/
 
 
-	ofstream _my_log("_my_log.txt");
 	
-	//xÖá¹Ç¼Ü
+	
+	//xè½´éª¨æ¶
 	CreateSkeleton(cloud, cloud_skeleton, n, size, 0, _my_log);
 	int num1 = cloud_skeleton->size();
+	//calc get x skeleton running time
+	end_time = GetTickCount();
+	_my_log << "get x skeleton time is :" + to_string(end_time - start_time) << endl;
+	start_time = GetTickCount();
+
 	std::cout << "skeleton after x has " << num1 << "points" << endl;
-	//yÖá¹Ç¼Ü
+	//yè½´éª¨æ¶
 	CreateSkeleton(cloud, cloud_skeleton, n, size, 1, _my_log);
 	int num2 = cloud_skeleton->size();
+	//calc get y skeleton running time
+	end_time = GetTickCount();
+	_my_log << "get y skeleton time is :" + to_string(end_time - start_time) << endl;
+	start_time = GetTickCount();
+
 	std::cout << "skeleton after y has " << num2 << "points" << endl;
-	//zÖá¹Ç¼Ü
+	//zè½´éª¨æ¶
 	CreateSkeleton(cloud, cloud_skeleton, n, size, 2, _my_log);
 	int num3 = cloud_skeleton->size();
-
+	//calc get z skeleton running time
+	end_time = GetTickCount();
+	_my_log << "get z skeleton time is :" + to_string(end_time - start_time) << endl;
+	start_time = GetTickCount();
 
 	_my_log << "skeleton after x has " << num1 << "points" << endl;
 	_my_log << "skeleton after y has " << num2 - num1 << "points" << endl;
@@ -1049,21 +1168,26 @@ int main()
 	pcl::io::savePCDFileASCII("cloud_skeleton.pcd", *cloud_skeleton);
 	std::cout << "number" << coun << endl;
 
+	//calc save skeleton file running time
+	end_time = GetTickCount();
+	_my_log << "save skeleton file time is :" + to_string(end_time - start_time) << endl;
+	start_time = GetTickCount();
+
 	_my_log << "The run time is " << (double)clock() / CLOCKS_PER_SEC << "s" << endl;
 
-	_my_log.close();
+	
 
-	//´´½¨viewer¶ÔÏó
-	//Ô­Ê¼µãÔÆÏÔÊ¾´°¿Ú
-	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer_ori(new pcl::visualization::PCLVisualizer("Ô­Ê¼µãÔÆ"));
+	//åˆ›å»ºviewerå¯¹è±¡
+	//åŸå§‹ç‚¹äº‘æ˜¾ç¤ºçª—å£
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer_ori(new pcl::visualization::PCLVisualizer("åŸå§‹ç‚¹äº‘"));
 	//viewer_ori->addPointCloud<pcl::PointXYZ>(cloud, "cloud");
 	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> red(cloud, 255, 185, 185);
 	viewer_ori->addPointCloud(cloud, "cloud");
 	viewer_ori->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
 	viewer_ori->addCoordinateSystem(1);
 
-	//Ô­Ê¼µãÔÆÏÔÊ¾´°¿Ú
-	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer_cut(new pcl::visualization::PCLVisualizer("qiepianµãÔÆ"));
+	//åŸå§‹ç‚¹äº‘æ˜¾ç¤ºçª—å£
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer_cut(new pcl::visualization::PCLVisualizer("qiepianç‚¹äº‘"));
 	//viewer_ori->addPointCloud<pcl::PointXYZ>(cloud, "cloud");
 	//pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> ori_color_handler(cloud, 255, 0, 0);
 	//viewer_cut->addPointCloud(cloud, red, "cloud");
@@ -1072,8 +1196,8 @@ int main()
 	//viewer_cut->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1.5, "cut");
 	viewer_cut->addCoordinateSystem(1);
 
-	//Ô­Ê¼µãÔÆÏÔÊ¾´°¿Ú
-	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer_all(new pcl::visualization::PCLVisualizer("skeletonµãÔÆ"));
+	//åŸå§‹ç‚¹äº‘æ˜¾ç¤ºçª—å£
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer_all(new pcl::visualization::PCLVisualizer("skeletonç‚¹äº‘"));
 	//viewer_ori->addPointCloud<pcl::PointXYZ>(cloud, "cloud");
 	//pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> ori_color_handler(cloud, 255, 0, 0);
 	viewer_all->addPointCloud(cloud, red, "cloud");
@@ -1103,6 +1227,13 @@ int main()
 		viewer_all->spinOnce(1);
 		boost::this_thread::sleep(boost::posix_time::microseconds(100000));
 	}
+
+	//calc initialize visualization running time
+	end_time = GetTickCount();
+	_my_log << "initial visualization time is :" + to_string(end_time - start_time) << endl;
+
+
+	_my_log.close();
 
 	cin.get();
 	return 0;
