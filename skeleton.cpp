@@ -276,10 +276,10 @@ vector <pcl::PointIndices> regionGrow(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud
 	//normal_estimator.compute(*normals);
 
 	//创建mls对象
-	pcl::MovingLeastSquares<pcl::PointXYZ, pcl::PointNormal> mls;
+	pcl::MovingLeastSquaresOMP<pcl::PointXYZ, pcl::PointNormal> mls;
 
 	//   pcl::MovingLeastSquares<point,point> mls;
-
+	mls.setNumberOfThreads(500);
 	mls.setComputeNormals(true);
 	mls.setInputCloud(cloud_in);
 	mls.setPolynomialFit(true); //设置为true则在平滑过程中采用多项式拟合来提高精度
@@ -971,7 +971,7 @@ int main()
 
 
 	//加载点云文件
-	pcl::io::loadPCDFile("zhengti-dianyun.pcd", *cloud);
+	pcl::io::loadPCDFile("zhengti-moxing-xie.pcd", *cloud);
 
 	//std::cout << "PointCloud before filtering has: " << cloud->points.size() << " data points." << std::endl;
 	std::cerr << "Point cloud data: " << cloud->points.size() << " points" << std::endl;

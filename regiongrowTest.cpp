@@ -16,6 +16,7 @@
 #include <pcl/features/normal_3d.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/segmentation/region_growing.h>
+#include <pcl/segmentation/grabcut_segmentation.h>
 
 using namespace std;
 using namespace pcl;
@@ -42,28 +43,33 @@ int main()
 	////转存为可读取的PCD文件格式
 	//pcl::io::savePCDFileASCII("chaijie-65-rotatest.pcd", *cloud_align);
 
-	pcl::io::loadPCDFile("y-19.pcd", *cloud);
+	pcl::io::loadPCDFile("region-0.pcd", *cloud);
+
+	std::vector <pcl::PointIndices> clusters;
 	
 	pcl::search::Search<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
 	pcl::PointCloud <pcl::Normal>::Ptr normals(new pcl::PointCloud <pcl::Normal>);
 	pcl::PointCloud<pcl::PointNormal>::Ptr mls_points(new pcl::PointCloud<pcl::PointNormal>);
+	/*
 	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
 	normal_estimator.setInputCloud(cloud);
 	normal_estimator.setSearchMethod(tree);
-	normal_estimator.setKSearch(200);
-	//normal_estimator.compute(*normals);
-
+	normal_estimator.setKSearch(50);
+	normal_estimator.compute(*normals);
+	
+	*/
 	//创建mls对象
-	pcl::MovingLeastSquares<pcl::PointXYZ, pcl::PointNormal> mls;
+	
+	pcl::MovingLeastSquaresOMP<pcl::PointXYZ, pcl::PointNormal> mls;
 
 	//   pcl::MovingLeastSquares<point,point> mls;
-
+	mls.setNumberOfThreads(200);
 	mls.setComputeNormals(true);
 	mls.setInputCloud(cloud);
 	mls.setPolynomialFit(true); //设置为true则在平滑过程中采用多项式拟合来提高精度
 	mls.setPolynomialOrder(4); //MLS拟合的阶数，默认是2
 	mls.setSearchMethod(tree);
-	mls.setSearchRadius(5);  //搜索半径
+	mls.setSearchRadius(1);  //搜索半径
 
 	mls.process(*mls_points);
 
@@ -76,26 +82,26 @@ int main()
 		normals->points[i].curvature = mls_points->points[i].curvature;
 	}
 
-	/*坐标过滤器
-	pcl::IndicesPtr indices(new std::vector <int>);
-	pcl::PassThrough<pcl::PointXYZ> pass;
-	pass.setInputCloud(cloud);
-	pass.setFilterFieldName("z");
-	pass.setFilterLimits(0.0, 1.0);
-	pass.filter(*indices);
-*/
+	//坐标过滤器
+	//pcl::IndicesPtr indices(new std::vector <int>);
+	//pcl::PassThrough<pcl::PointXYZ> pass;
+	//pass.setInputCloud(cloud);
+	//pass.setFilterFieldName("z");
+	//pass.setFilterLimits(0.0, 1.0);
+	//pass.filter(*indices);
+
 	pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
 	reg.setMinClusterSize(300);
 	reg.setMaxClusterSize(1000000);
 	reg.setSearchMethod(tree);
-	reg.setNumberOfNeighbours(200);
+	reg.setNumberOfNeighbours(20);
 	reg.setInputCloud(cloud);
 	//reg.setIndices (indices);
 	reg.setInputNormals(normals);
 	reg.setSmoothnessThreshold(60.0 / 180.0 * M_PI);
 	reg.setCurvatureThreshold(2);
 
-	std::vector <pcl::PointIndices> clusters;
+	
 	reg.extract(clusters);
 
 	std::cout << "Number of clusters is equal to " << clusters.size() << std::endl;
@@ -131,6 +137,25 @@ int main()
 		pcl::io::savePCDFileASCII(filename, *cloud_save);
 		n++;
 	}
+	
+	
+	/*
+	pcl::GrabCut<PointXYZ> grab;
+	clusters.clear();
+	grab.setInputCloud(cloud);
+	grab.setK(5);
+	grab.setLambda(50);
+	grab.setNumberOfNeighbours(1);
+	grab.setSearchMethod(tree);
+	grab.extract(clusters);
+
+	std::cout << "****************grab cut ****************" << endl;
+	std::cout << "Number of clusters is equal to " << clusters.size() << std::endl;
+	std::cout << "First cluster has " << clusters[0].indices.size() << " points." << endl;
+	std::cout << "These are the indices of the points of the initial" <<
+		std::endl << "cloud that belong to the first cluster:" << std::endl;
+
+	*/
 
 	pcl::PointCloud <pcl::PointXYZRGB>::Ptr colored_cloud = reg.getColoredCloud();
 
