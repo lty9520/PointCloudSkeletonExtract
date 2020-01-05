@@ -43,7 +43,7 @@ int main()
 	////转存为可读取的PCD文件格式
 	//pcl::io::savePCDFileASCII("chaijie-65-rotatest.pcd", *cloud_align);
 
-	pcl::io::loadPCDFile("region-0.pcd", *cloud);
+	pcl::io::loadPCDFile("y-30.pcd", *cloud);
 
 	std::vector <pcl::PointIndices> clusters;
 	
